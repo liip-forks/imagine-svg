@@ -98,14 +98,14 @@ class ImageTest extends TestCase
         $this->assertSame(100, $image->getSize()->getHeight());
         $this->assertSame('0 0 100 100', $image->getDomDocument()->documentElement->getAttribute('viewBox'));
 
-        $image->crop(new Point(25, 25), new Box(50, 50));
+        $this->assertSame($image, $image->crop(new Point(25, 25), new Box(50, 50)));
 
         $this->assertSame(50, $image->getSize()->getWidth());
         $this->assertSame(50, $image->getSize()->getHeight());
         $this->assertSame('0 0 50 50', $image->getDomDocument()->documentElement->getAttribute('viewBox'));
 
         $imageBefore = $image->get('svg');
-        $image->crop(new Point(0, 0), new Box(50, 50));
+        $this->assertSame($image, $image->crop(new Point(0, 0), new Box(50, 50)));
         $this->assertSame($imageBefore, $image->get('svg'));
 
         $image->getDomDocument()->documentElement->removeAttribute('viewBox');
@@ -174,7 +174,7 @@ class ImageTest extends TestCase
         );
 
         $image->getDomDocument()->documentElement->removeAttribute('viewBox');
-        $image->resize(new Box(100, 100));
+        $this->assertSame($image, $image->resize(new Box(100, 100)));
 
         $this->assertSame(100, $image->getSize()->getWidth());
         $this->assertSame(100, $image->getSize()->getHeight());
@@ -200,7 +200,7 @@ class ImageTest extends TestCase
 
         $imagine = new Imagine();
         $image = $imagine->create(new Box(100, 100));
-        $image->save($path);
+        $this->assertSame($image, $image->save($path));
 
         $contents = file_get_contents($path);
 
@@ -256,7 +256,10 @@ class ImageTest extends TestCase
         $image = $imagine->create(new Box(100, 100));
 
         ob_start();
-        @$image->show('svg'); // suppress headers already sent warning
+        $this->assertSame(
+            $image,
+            @$image->show('svg') // suppress headers already sent warning
+        );
         $contents = ob_get_clean();
 
         $document = new \DOMDocument();
