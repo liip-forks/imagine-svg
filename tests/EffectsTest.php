@@ -14,8 +14,10 @@ use Contao\ImagineSvg\Effects;
 use Contao\ImagineSvg\Imagine;
 use Contao\ImagineSvg\UndefinedBox;
 use Imagine\Exception\InvalidArgumentException;
-use Imagine\Exception\RuntimeException;
+use Imagine\Exception\NotSupportedException;
 use Imagine\Image\Palette\Color\ColorInterface;
+use Imagine\Image\Palette\Color\RGB as ColorRgb;
+use Imagine\Image\Palette\RGB as PaletteRgb;
 use PHPUnit\Framework\TestCase;
 
 class EffectsTest extends TestCase
@@ -27,47 +29,121 @@ class EffectsTest extends TestCase
 
     public function testGamma()
     {
-        $effects = new Effects(new \DOMDocument());
+        $dom = (new Imagine())->create(new UndefinedBox())->getDomDocument();
+        $effects = new Effects($dom);
 
-        $this->expectException(RuntimeException::class);
+        $this->assertSame($effects, $effects->gamma(1));
+        $this->assertTrue($dom->documentElement->firstChild->hasAttribute('filter'));
 
-        $effects->gamma(1);
+        $filter = $dom->getElementsByTagName('filter')[0];
+        $filterId = explode(')', explode('#', $dom->documentElement->firstChild->getAttribute('filter'))[1])[0];
+
+        $this->assertSame($filterId, $filter->getAttribute('id'));
+        $this->assertSame('feComponentTransfer', $filter->firstChild->nodeName);
+        $this->assertSame('gamma', $filter->firstChild->firstChild->getAttribute('type'));
+        $this->assertSame('1', $filter->firstChild->firstChild->getAttribute('exponent'));
+
+        $effects->gamma(1.6);
+
+        $this->assertSame('url(#'.$filterId.')', $dom->documentElement->firstChild->getAttribute('filter'));
+        $this->assertSame(2, $filter->childNodes->length);
+        $this->assertSame('feComponentTransfer', $filter->lastChild->nodeName);
+        $this->assertSame('gamma', $filter->lastChild->firstChild->getAttribute('type'));
+        $this->assertSame('0.390625', $filter->lastChild->firstChild->getAttribute('exponent'));
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $effects->gamma(0);
     }
 
     public function testNegative()
     {
-        $effects = new Effects(new \DOMDocument());
+        $dom = (new Imagine())->create(new UndefinedBox())->getDomDocument();
+        $effects = new Effects($dom);
 
-        $this->expectException(RuntimeException::class);
+        $this->assertSame($effects, $effects->negative());
+        $this->assertTrue($dom->documentElement->firstChild->hasAttribute('filter'));
 
-        $effects->negative();
+        $filter = $dom->getElementsByTagName('filter')[0];
+        $filterId = explode(')', explode('#', $dom->documentElement->firstChild->getAttribute('filter'))[1])[0];
+
+        $this->assertSame($filterId, $filter->getAttribute('id'));
+        $this->assertSame('feColorMatrix', $filter->firstChild->nodeName);
+        $this->assertSame('matrix', $filter->firstChild->getAttribute('type'));
+        $this->assertSame([
+            '-1', '0', '0', '0', '1',
+            '0', '-1', '0', '0', '1',
+            '0', '0', '-1', '0', '1',
+            '0', '0',  '0', '1', '0',
+        ], preg_split('/\s+/', $filter->firstChild->getAttribute('values')));
     }
 
     public function testGrayscale()
     {
-        $effects = new Effects(new \DOMDocument());
+        $dom = (new Imagine())->create(new UndefinedBox())->getDomDocument();
+        $effects = new Effects($dom);
 
-        $this->expectException(RuntimeException::class);
+        $this->assertSame($effects, $effects->grayscale());
+        $this->assertTrue($dom->documentElement->firstChild->hasAttribute('filter'));
 
-        $effects->grayscale();
+        $filter = $dom->getElementsByTagName('filter')[0];
+        $filterId = explode(')', explode('#', $dom->documentElement->firstChild->getAttribute('filter'))[1])[0];
+
+        $this->assertSame($filterId, $filter->getAttribute('id'));
+        $this->assertSame('feColorMatrix', $filter->firstChild->nodeName);
+        $this->assertSame('saturate', $filter->firstChild->getAttribute('type'));
+        $this->assertSame('0', $filter->firstChild->getAttribute('values'));
     }
 
     public function testColorize()
     {
-        $effects = new Effects(new \DOMDocument());
+        $dom = (new Imagine())->create(new UndefinedBox())->getDomDocument();
+        $effects = new Effects($dom);
+        $color = new ColorRgb(new PaletteRgb(), [255, 0, 0], 100);
 
-        $this->expectException(RuntimeException::class);
+        $this->assertSame($effects, $effects->colorize($color));
+        $this->assertTrue($dom->documentElement->firstChild->hasAttribute('filter'));
+
+        $filter = $dom->getElementsByTagName('filter')[0];
+        $filterId = explode(')', explode('#', $dom->documentElement->firstChild->getAttribute('filter'))[1])[0];
+
+        $this->assertSame($filterId, $filter->getAttribute('id'));
+        $this->assertSame('feColorMatrix', $filter->firstChild->nodeName);
+        $this->assertSame('matrix', $filter->firstChild->getAttribute('type'));
+        $this->assertSame('1 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0', $filter->firstChild->getAttribute('values'));
+
+        $color = new ColorRgb(new PaletteRgb(), [0, 255, 0], 100);
+        $effects->colorize($color);
+
+        $this->assertSame('url(#'.$filterId.')', $dom->documentElement->firstChild->getAttribute('filter'));
+        $this->assertSame(2, $filter->childNodes->length);
+        $this->assertSame('feColorMatrix', $filter->lastChild->nodeName);
+        $this->assertSame('matrix', $filter->lastChild->getAttribute('type'));
+        $this->assertSame('1 0 0 0 0 0 1 0 0 1 0 0 1 0 0 0 0 0 1 0', $filter->lastChild->getAttribute('values'));
+
+        $this->expectException(NotSupportedException::class);
 
         $effects->colorize($this->createMock(ColorInterface::class));
     }
 
     public function testSharpen()
     {
-        $effects = new Effects(new \DOMDocument());
+        $dom = (new Imagine())->create(new UndefinedBox())->getDomDocument();
+        $effects = new Effects($dom);
 
-        $this->expectException(RuntimeException::class);
+        $this->assertSame($effects, $effects->sharpen());
+        $this->assertTrue($dom->documentElement->firstChild->hasAttribute('filter'));
 
-        $effects->sharpen();
+        $filter = $dom->getElementsByTagName('filter')[0];
+        $filterId = explode(')', explode('#', $dom->documentElement->firstChild->getAttribute('filter'))[1])[0];
+
+        $this->assertSame($filterId, $filter->getAttribute('id'));
+        $this->assertSame('feConvolveMatrix', $filter->firstChild->nodeName);
+        $this->assertSame([
+            '-0.02', '-0.12', '-0.02',
+            '-0.12',  '1.56', '-0.12',
+            '-0.02', '-0.12', '-0.02',
+        ], preg_split('/\s+/', $filter->firstChild->getAttribute('kernelMatrix')));
     }
 
     public function testBlur()
@@ -76,10 +152,10 @@ class EffectsTest extends TestCase
         $effects = new Effects($dom);
 
         $this->assertSame($effects, $effects->blur(1.5));
-        $this->assertTrue($dom->documentElement->hasAttribute('filter'));
+        $this->assertTrue($dom->documentElement->firstChild->hasAttribute('filter'));
 
         $filter = $dom->getElementsByTagName('filter')[0];
-        $filterId = explode(')', explode('#', $dom->documentElement->getAttribute('filter'))[1])[0];
+        $filterId = explode(')', explode('#', $dom->documentElement->firstChild->getAttribute('filter'))[1])[0];
 
         $this->assertSame($filterId, $filter->getAttribute('id'));
         $this->assertSame('feGaussianBlur', $filter->firstChild->nodeName);
@@ -87,7 +163,7 @@ class EffectsTest extends TestCase
 
         $effects->blur(10);
 
-        $this->assertSame('url(#'.$filterId.')', $dom->documentElement->getAttribute('filter'));
+        $this->assertSame('url(#'.$filterId.')', $dom->documentElement->firstChild->getAttribute('filter'));
         $this->assertSame(2, $filter->childNodes->length);
         $this->assertSame('feGaussianBlur', $filter->lastChild->nodeName);
         $this->assertSame('10', $filter->lastChild->getAttribute('stdDeviation'));
